@@ -1,2 +1,13 @@
 __pycache__/
 pretrained_models/
+
+sample.png
+
+logs/
+ncshare_logs/
+
+.vscode
+
+gpu_usage.log
+
+results/
