@@ -11,3 +11,5 @@ ncshare_logs/
 gpu_usage.log
 
 results/
+
+gpu_usage/
