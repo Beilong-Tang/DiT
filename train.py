@@ -221,6 +221,9 @@ def main(args):
     running_loss = 0
     start_time = time()
 
+    if not args.mem_alloc == 0:
+        _alloc = torch.empty(int(args.reserve_gb * 1024**3), dtype=torch.uint8, device=device)
+
     logger.info(f"Training for {args.epochs} epochs...")
     for epoch in range(start_epoch, args.epochs):
         sampler.set_epoch(epoch)
@@ -297,6 +300,8 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--ckpt-every", type=int, default=50_000)
+    # added 
     parser.add_argument("--resume", action='store_true')
+    parser.add_argument("--mem-alloc", type = int, default=0)
     args = parser.parse_args()
     main(args)
