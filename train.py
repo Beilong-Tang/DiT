@@ -103,6 +103,24 @@ def center_crop_arr(pil_image, image_size):
     return Image.fromarray(arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size])
 
 
+def find_checkpoint(checkpoint_dir, resume):
+    """
+    if any checkpoint under checkpoint_dir, use the latest one
+    return model, ema, opt, train_step, epoch
+    """
+    if not resume:
+        return None
+    
+    if len(os.listdir(checkpoint_dir)) == 0:
+        return None
+    else:
+        ckpt_files = sorted(os.listdir(checkpoint_dir), key= lambda i: int(os.path.splitext(i)[0]))
+        last_ckpt = ckpt_files[-1]
+        last_ckpt = os.path.join(checkpoint_dir, last_ckpt)
+        print(f"resuming from ckpt {last_ckpt}")
+        ckpt = torch.load(last_ckpt, map_location='cpu', weights_only=False)
+        return ckpt
+
 #################################################################################
 #                                  Training Loop                                #
 #################################################################################
@@ -124,13 +142,14 @@ def main(args):
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
     # Setup an experiment folder:
+    os.makedirs(args.results_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
+    # experiment_index = len(glob(f"{args.results_dir}/*"))
+    model_string_name = args.model.replace("/", "-")  # e.g., DiT-XL/2 --> DiT-XL-2 (for naming folders)
+    # experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}"  # Create an experiment folder
+    experiment_dir = f"{args.results_dir}/{model_string_name}"
+    checkpoint_dir = f"{experiment_dir}/checkpoints"  # Stores saved model checkpoints
+    os.makedirs(checkpoint_dir, exist_ok=True)
     if rank == 0:
-        os.makedirs(args.results_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
-        experiment_index = len(glob(f"{args.results_dir}/*"))
-        model_string_name = args.model.replace("/", "-")  # e.g., DiT-XL/2 --> DiT-XL-2 (for naming folders)
-        experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}"  # Create an experiment folder
-        checkpoint_dir = f"{experiment_dir}/checkpoints"  # Stores saved model checkpoints
-        os.makedirs(checkpoint_dir, exist_ok=True)
         logger = create_logger(experiment_dir)
         logger.info(f"Experiment directory created at {experiment_dir}")
     else:
@@ -146,6 +165,9 @@ def main(args):
     # Note that parameter initialization is done within the DiT constructor
     ema = deepcopy(model).to(device)  # Create an EMA of the model for use after training
     requires_grad(ema, False)
+    ckpt = find_checkpoint(checkpoint_dir, resume=args.resume)
+    if ckpt is not None:
+        model.load_state_dict(ckpt['model'])
     model = DDP(model.to(device), device_ids=[rank])
     diffusion = create_diffusion(timestep_respacing="")  # default: 1000 steps, linear noise schedule
     vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
@@ -181,18 +203,26 @@ def main(args):
     logger.info(f"Dataset contains {len(dataset):,} images ({args.data_path})")
 
     # Prepare models for training:
-    update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights
     model.train()  # important! This enables embedding dropout for classifier-free guidance
     ema.eval()  # EMA model should always be in eval mode
 
-    # Variables for monitoring/logging purposes:
-    train_steps = 0
+    if ckpt is not None:
+        ema.load_state_dict(ckpt['ema'])
+        opt.load_state_dict(ckpt['opt'])
+        train_steps = ckpt['train_steps']
+        start_epoch = ckpt['epoch'] 
+        del ckpt
+    else:
+        update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights
+        train_steps = 0
+        start_epoch = 0
+
     log_steps = 0
     running_loss = 0
     start_time = time()
 
     logger.info(f"Training for {args.epochs} epochs...")
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         sampler.set_epoch(epoch)
         logger.info(f"Beginning epoch {epoch}...")
         for x, y in loader:
@@ -236,7 +266,9 @@ def main(args):
                         "model": model.module.state_dict(),
                         "ema": ema.state_dict(),
                         "opt": opt.state_dict(),
-                        "args": args
+                        "args": args, 
+                        "train_steps": train_steps,
+                        "epoch": epoch
                     }
                     checkpoint_path = f"{checkpoint_dir}/{train_steps:07d}.pt"
                     torch.save(checkpoint, checkpoint_path)
@@ -265,5 +297,6 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--ckpt-every", type=int, default=50_000)
+    parser.add_argument("--resume", action='store_true')
     args = parser.parse_args()
     main(args)
