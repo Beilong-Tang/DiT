@@ -24,7 +24,7 @@ trap 'kill $NVSMI_PID 2>/dev/null' EXIT
 source ~/miniforge3/etc/profile.d/conda.sh
 conda activate /work/btang1/envs/DiT
 
-torchrun --nnodes=1 --nproc_per_node=1 python sample_ddp.py --vae mse \
+torchrun --nnodes=1 --nproc_per_node=1 sample_ddp.py --vae mse \
     --cfg_scale 1.0 \
     --ckpt results/DiT-XL-2/checkpoints/0350000.pt \
     --global-seed 42
