@@ -25,6 +25,11 @@ trap 'kill $NVSMI_PID 2>/dev/null' EXIT
 SRC="/work/btang1/data/Imagenet_process/imagenet_train"
 ./shell/00_copy_data.sh $SRC
 
+
+# Initialization
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate /work/btang1/envs/DiT
+
 # 01 training 
 MEM_ALLOC=30
 torchrun --nnodes=1 --nproc_per_node=4 train.py --model DiT-XL/2 \
