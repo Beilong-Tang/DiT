@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH -c 24
 #SBATCH --mem=128G
-#SBATCH -t 56:00:00
+#SBATCH -t 60:00:00
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 
