@@ -59,6 +59,9 @@ def main(args):
     torch.cuda.set_device(device)
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
+    if not args.mem_alloc == 0:
+        _alloc = torch.empty(int(args.mem_alloc * 1024**3), dtype=torch.uint8, device=device)
+
     if args.ckpt is None:
         assert args.model == "DiT-XL/2", "Only DiT-XL/2 models are available for auto-download."
         assert args.image_size in [256, 512]
@@ -162,5 +165,6 @@ if __name__ == "__main__":
                         help="By default, use TF32 matmuls. This massively accelerates sampling on Ampere GPUs.")
     parser.add_argument("--ckpt", type=str, default=None,
                         help="Optional path to a DiT checkpoint (default: auto-download a pre-trained DiT-XL/2 model).")
+    parser.add_argument("--mem-alloc", type = int, default=0)
     args = parser.parse_args()
     main(args)
