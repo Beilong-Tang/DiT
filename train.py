@@ -222,7 +222,7 @@ def main(args):
     start_time = time()
 
     if not args.mem_alloc == 0:
-        _alloc = torch.empty(int(args.reserve_gb * 1024**3), dtype=torch.uint8, device=device)
+        _alloc = torch.empty(int(args.mem_alloc * 1024**3), dtype=torch.uint8, device=device)
 
     logger.info(f"Training for {args.epochs} epochs...")
     for epoch in range(start_epoch, args.epochs):
