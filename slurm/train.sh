@@ -2,7 +2,7 @@
 #SBATCH -J train-dit-xl2
 #SBATCH -p gpu-hp
 #SBATCH --qos=ncsu_h200_hp
-#SBATCH --gres=gpu:h200:4
+#SBATCH --gres=gpu:h200:2
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 24
@@ -32,7 +32,7 @@ conda activate /work/btang1/envs/DiT
 
 # 01 training 
 MEM_ALLOC=30
-torchrun --nnodes=1 --nproc_per_node=4 train.py --model DiT-XL/2 \
+torchrun --nnodes=1 --nproc_per_node=2 train.py --model DiT-XL/2 \
     --data-path /scratch/imagenet \
     --global-batch-size 256 \
     --vae "mse" \
