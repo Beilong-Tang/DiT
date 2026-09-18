@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J sample-dit-xl2_ckpt350k
+#SBATCH -J sample-dit-xl2_ckpt400k
 #SBATCH -p gpu-hp
 #SBATCH --qos=ncsu_h200_hp
 #SBATCH --gres=gpu:h200:1
@@ -26,6 +26,6 @@ conda activate /work/btang1/envs/DiT
 
 torchrun --nnodes=1 --nproc_per_node=1 sample_ddp.py --vae mse \
     --cfg-scale 1.0 \
-    --ckpt results/DiT-XL-2/checkpoints/0350000.pt \
+    --ckpt results/DiT-XL-2/checkpoints/0400000.pt \
     --global-seed 42 \
     --mem-alloc 60

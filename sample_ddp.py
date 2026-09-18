@@ -23,7 +23,7 @@ from PIL import Image
 import numpy as np
 import math
 import argparse
-
+from utils import str2bool
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -71,14 +71,15 @@ def main(args):
     latent_size = args.image_size // 8
     model = DiT_models[args.model](
         input_size=latent_size,
-        num_classes=args.num_classes
+        num_classes=args.num_classes,
+        learn_sigma=args.learn_sigma
     ).to(device)
     # Auto-download a pre-trained model or load a custom DiT checkpoint from train.py:
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
     state_dict = find_model(ckpt_path)
     model.load_state_dict(state_dict)
     model.eval()  # important!
-    diffusion = create_diffusion(str(args.num_sampling_steps))
+    diffusion = create_diffusion(str(args.num_sampling_steps), learn_sigma=args.learn_sigma)
     vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
     assert args.cfg_scale >= 1.0, "In almost all cases, cfg_scale be >= 1.0"
     using_cfg = args.cfg_scale > 1.0
@@ -166,5 +167,13 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", type=str, default=None,
                         help="Optional path to a DiT checkpoint (default: auto-download a pre-trained DiT-XL/2 model).")
     parser.add_argument("--mem-alloc", type = int, default=0)
+    parser.add_argument(
+        "--learn-sigma",
+        type=str2bool,
+        nargs='?',
+        const=True,
+        default=True,
+        help="Whether to learn sigma. Pass --learn-sigma to enable, or --learn-sigma false to disable (default: True)."
+    )
     args = parser.parse_args()
     main(args)

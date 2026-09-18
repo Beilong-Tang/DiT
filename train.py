@@ -30,6 +30,7 @@ import os
 from models import DiT_models
 from diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
+from utils import str2bool
 
 
 #################################################################################
@@ -160,7 +161,8 @@ def main(args):
     latent_size = args.image_size // 8
     model = DiT_models[args.model](
         input_size=latent_size,
-        num_classes=args.num_classes
+        num_classes=args.num_classes,
+        learn_sigma=args.learn_sigma
     )
     # Note that parameter initialization is done within the DiT constructor
     ema = deepcopy(model).to(device)  # Create an EMA of the model for use after training
@@ -169,7 +171,7 @@ def main(args):
     if ckpt is not None:
         model.load_state_dict(ckpt['model'])
     model = DDP(model.to(device), device_ids=[rank])
-    diffusion = create_diffusion(timestep_respacing="")  # default: 1000 steps, linear noise schedule
+    diffusion = create_diffusion(timestep_respacing="", learn_sigma=args.learn_sigma)  # default: 1000 steps, linear noise schedule
     vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -303,5 +305,13 @@ if __name__ == "__main__":
     # added 
     parser.add_argument("--resume", action='store_true')
     parser.add_argument("--mem-alloc", type = int, default=0)
+    parser.add_argument(
+        "--learn-sigma",
+        type=str2bool,
+        nargs='?',
+        const=True,
+        default=True,
+        help="Whether to learn sigma. Pass --learn-sigma to enable, or --learn-sigma false to disable (default: True)."
+    )
     args = parser.parse_args()
     main(args)
