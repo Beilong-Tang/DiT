@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH -J train-dit-xl2
-#SBATCH -p gpu-hp
-#SBATCH --qos=ncsu_h200_hp
+#SBATCH -p gpu
+#SBATCH --qos=normal
 #SBATCH --gres=gpu:h200:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 24
 #SBATCH --mem=128G
-#SBATCH -t 72:00:00
+#SBATCH -t 48:00:00
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 
@@ -58,4 +58,5 @@ torchrun --nnodes=1 --nproc_per_node=4 sample_ddp.py --vae mse \
     --ckpt $RESULTS_DIR/DiT-XL-2/checkpoints/0400000.pt \
     --global-seed 42 \
     --mem-alloc 60 \
-    --learn-sigma $LEARN_SIGMA
+    --learn-sigma $LEARN_SIGMA \
+    --sample-dir samples_no_sigma
