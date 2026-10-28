@@ -2,7 +2,7 @@
 #SBATCH -J train-dit-xl2
 #SBATCH -p gpu-hp
 #SBATCH --qos=ncsu_h200_hp
-#SBATCH --gres=gpu:h200:4
+#SBATCH --gres=gpu:h200:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH -c 24
@@ -15,11 +15,9 @@ set -e
 
 # monitor gpu usage
 mkdir -p gpu_usage
-nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,memory.total \
-    --format=csv -l 30 > "gpu_usage/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.log" &
+gpumon 30 > "gpu_usage/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.log" &
 NVSMI_PID=$!
 trap 'kill $NVSMI_PID 2>/dev/null' EXIT
-
 
 # 00 transfer the imagenet data to the scratch folder for faster loading
 SRC="/work/btang1/data/Imagenet_process/imagenet_train"
